@@ -1,0 +1,10 @@
+-- add_requires("sfml")
+
+target("build")
+	set_kind("binary")
+	set_extension(".exe")
+	add_files({"src/*.cpp", "src/*.cppm"})
+	set_languages("c++20")
+	set_toolchains("clang")
+	add_cxxflags("-Wall", "-Wextra", { tools = "clang" })
+	-- add_packages("sfml")
