@@ -14,9 +14,9 @@
             ["build/.objs/build/linux/x86_64/release/src/ECS.cppm.o"] = {
                 provides = {
                     ECS = {
+                        bmi = "build/.gens/build/linux/x86_64/release/rules/bmi/cache/modules/b6262688/ECS.pcm",
                         interface = true,
-                        sourcefile = "src/ECS.cppm",
-                        bmi = "build/.gens/build/linux/x86_64/release/rules/bmi/cache/modules/b6262688/ECS.pcm"
+                        sourcefile = "src/ECS.cppm"
                     }
                 }
             }

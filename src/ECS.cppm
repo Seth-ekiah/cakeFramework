@@ -16,6 +16,21 @@ export class Transform;
 
 // >>---------------------------------------------------------------------<< //
 
+
+/**
+ * @brief      This class describes a component.
+ */
+class Component {
+	Entity& entity;
+
+	virtual void Start() = 0;
+	virtual void Update() = 0;
+
+public:
+	Component(Entity* owner) : entity{*owner} {}
+	virtual ~Component() {}
+};
+
 /**
  * @brief      This class describes an entity.
  */
@@ -38,8 +53,6 @@ public:
 
 	~Entity() {
 		std::for_each(mComponents.begin(), mComponents.end(), [](auto& it){
-			// Causes UB since we do not know the exact type of the object we
-			// are deleting
 			delete it.second;
 		});
 	}
@@ -101,26 +114,11 @@ public:
 		if (keyLocation == mComponents.end())
 			return;
 
-		delete static_cast<T*>(keyLocation->second);
+		delete keyLocation->second;
 
 		mComponents.erase(keyLocation);
 	}
 };
-
-/**
- * @brief      This class describes a component.
- */
-class Component {
-	Entity& entity;
-
-	virtual void Start() = 0;
-	virtual void Update() = 0;
-
-public:
-	Component(Entity* owner) : entity{*owner} {}
-};
-
-
 
 /**
  * @brief      This class describes a transform.
