@@ -5,20 +5,13 @@ import ECS;
 int main() {
 	Entity a;
 
-	if (Transform* t = a.addComponent<Transform>())
-		t->Test();
+	a.addComponent<Transform>();
+	a.addComponent<TestComp>();
+
+	if (Transform* t = a.getComponent<Transform>())
+		std::cout << "Yeah!" << std::endl;
 	else
-		std::cout << "fail" << std::endl;
-
-
-	a.removeComponent<Transform>();
-
-	
-	if (Transform* t = a.addComponent<Transform>())
-		t->Test();
-	else
-		std::cout << "fail" << std::endl;
-
+		std::cout << "No!" << std::endl;
 
 
 	return 0;

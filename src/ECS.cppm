@@ -10,9 +10,10 @@ module;
 export module ECS;
 
 // >>---------------------------------------------------------------------<< //
-export class Entity;
 export class Component;
+export class Entity;
 export class Transform;
+export class TestComp;
 
 // >>---------------------------------------------------------------------<< //
 
@@ -21,13 +22,24 @@ export class Transform;
  * @brief      This class describes a component.
  */
 class Component {
-	Entity& entity;
+	friend Entity;
 
-	virtual void Start() = 0;
-	virtual void Update() = 0;
+	// System functions
+	virtual void Start() {}
+	virtual void Update() {}
+
+protected:
+	// Pointer to the Entity instance which owns the current component instance.
+	// (for use inside of Component logic)
+	Entity* entity;
+
+	// Class Entity can only access up to protected members. These are declared
+	// here so that Entities can call System functions
+	inline virtual void Start_() final { Start(); }
+	inline virtual void Update_() final { Update(); }
 
 public:
-	Component(Entity* owner) : entity{*owner} {}
+	// Virtual Destructor is required for memory allocation purposes
 	virtual ~Component() {}
 };
 
@@ -35,25 +47,25 @@ public:
  * @brief      This class describes an entity.
  */
 class Entity {
-	friend Component;
+	Entity* parent_ = nullptr;
+	std::unordered_set<Entity*> children_;
 
-	Entity* mParent = nullptr;
-	std::unordered_set<Entity*> mChildren;
-
-	std::unordered_map<std::type_index, Component*> mComponents;
+	std::unordered_map<std::type_index, Component*> components_;
 
 
 public:
 	Entity(void)
-	 : mParent{nullptr} {}
+	 : parent_{nullptr} {}
 
 	Entity(Entity* parent) {
 		setParent(parent);
 	}
 
 	~Entity() {
-		std::for_each(mComponents.begin(), mComponents.end(), [](auto& it){
+		// Delete all memory allocations stored in the components map
+		std::for_each(components_.begin(), components_.end(), [](auto& it){
 			delete it.second;
+			it.second = nullptr;
 		});
 	}
 
@@ -63,27 +75,27 @@ public:
 	 * @param      parent  The new parent
 	 */
 	void setParent(Entity* parent) {
-		if (mParent == parent or nullptr == parent)
+		if (parent_ == parent or nullptr == parent)
 			return;
 
 		// Remove this from the old parent's children set
-		if (mParent != nullptr)
-			mParent->mChildren.erase(this);
+		if (parent_ != nullptr)
+			parent_->children_.erase(this);
 
 		// Insert this into the new parent's children set
-		parent->mChildren.insert(this);
+		parent->children_.insert(this);
 
 		// Set the new parent
-		mParent = parent;
+		parent_ = parent;
 	}
 
 	/**
 	 * @brief      Get the parent of the current instance
 	 *
-	 * @return     The parent
+	 * @return     The parent if it exists, null otherwise
 	 */
 	Entity* getParent() {
-		return mParent;
+		return parent_;
 	}
 
 	/**
@@ -91,32 +103,67 @@ public:
 	 *
 	 * @tparam     T     The component type
 	 *
-	 * @return     A pointer to the component if true, null otherwise
+	 * @return     A pointer to the component if it was added, null otherwise
 	 */
 	template<class T>
 	T* addComponent() {
 		// Emplace a new component using its type as the key
-		auto insertionState = mComponents.emplace(std::make_pair(
-			static_cast<std::type_index>(typeid(T)), new T(this)));
+		auto insertionState = components_.emplace(std::make_pair(
+			static_cast<std::type_index>(typeid(T)), new T()));
 
 		// If the component already existed then return nullptr
 		if (!insertionState.second)
 			return nullptr;
 
+		insertionState.first->second->entity = this;
+		insertionState.first->second->Start_();
+
 		// Otherwise return a pointer to the new component
 		return static_cast<T*>(insertionState.first->second);
 	}
 
+	/**
+	 * @brief      Removes a specified component from the current instance
+	 *
+	 * @tparam     T     The component type
+	 */
 	template<class T>
 	void removeComponent() {
-		auto keyLocation = mComponents.find(typeid(T));
+		// Find the location of the component in the map using the typeid as the
+		// index
+		auto itToComponent = components_.find(typeid(T));
 		
-		if (keyLocation == mComponents.end())
+		// If the component does not exist then return
+		if (itToComponent == components_.end())
 			return;
 
-		delete keyLocation->second;
+		// Delete the memory allocation for the component
+		delete itToComponent->second;
+		itToComponent->second = nullptr;
 
-		mComponents.erase(keyLocation);
+		// Remove the pair from the map
+		components_.erase(itToComponent);
+	}
+
+	/**
+	 * @brief      Gets a specified component from the current instance
+	 *
+	 * @tparam     T     The component type
+	 *
+	 * @return     A pointer to the component if it exists, null otherwise
+	 */
+	template<class T>
+	T* getComponent() {
+		// Find the location of the component in the map using the typeid as the
+		// index
+		auto itToComponent = components_.find(typeid(T));
+		
+		// If the component does not exist then return null
+		if (itToComponent == components_.end())
+			return nullptr;
+
+		// Otherwise return the component
+		return static_cast<T*>(itToComponent->second);
 	}
 };
 
@@ -131,11 +178,13 @@ class Transform final : public Component {
 	void Update() {
 		std::cout << "Transform Update!" << std::endl;
 	}
+};
 
-public:
-	using Component::Component;
-
-	void Test() {
-		std::cout << "Testing Transform!" << std::endl;
+/**
+ * @brief      This class describes a test component.
+ */
+class TestComp final : public Component {
+	void Start() {
+		std::cout << "TestComp Start!" << std::endl;
 	}
 };
